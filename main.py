@@ -7,9 +7,15 @@ from PIL.ImageEnhance import Color, Sharpness, Brightness, Contrast
 from fractions import Fraction
 from tkinter import filedialog
 from PIL import Image, ImageTk
-from tkinter import ttk
+import customtkinter as ctk
+from sys import platform
 import tkinter as tk
 import typing as tp
+
+ctk.set_appearance_mode("system")
+if platform == "linux":  # since for now ctk will set linux always to light
+    ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("green")
 
 
 def from_rgb(rgb):
@@ -21,13 +27,13 @@ def from_rgb(rgb):
 
 class SliderValue(tp.TypedDict):
     enhancer: tp.Type[Color] | tp.Type[Sharpness] | tp.Type[Brightness] | tp.Type[Contrast]
+    slider: ctk.CTkSlider
+    entry: ctk.CTkEntry
     func: tp.Callable
-    slider: tk.Scale
-    entry: tk.Entry
     value: float
 
 
-class Window(tk.Tk):
+class Window(ctk.CTk):
     p1 = ...
     p2 = ...
     __p1x: float = 0
@@ -45,7 +51,7 @@ class Window(tk.Tk):
     scale: float = 1
 
     image_path: str = "./images/globe_texture.jpg"
-    currently_placing: tk.Canvas
+    currently_placing: ctk.CTkCanvas
     aspect_ratio: tuple[int, int]
     window_size: tuple[int, int]
     placed_objects: list
@@ -56,7 +62,7 @@ class Window(tk.Tk):
         super().__init__()
 
         # mutable defaults
-        self.currently_placing = tk.Canvas(self)
+        self.currently_placing = ctk.CTkCanvas(self)
 
         self.original_image = Image.open(self.image_path)
         self.window_size = self.original_image.size
@@ -67,28 +73,6 @@ class Window(tk.Tk):
         self.title("Image Editor")
         width, height = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry("%dx%d+0+0" % (width, height))
-
-        # set ttk styles
-        self.style = ttk.Style()
-        self.style.configure("Wild.TButton", background="gray24", foreground="white")
-        self.style.map(
-            "TButton",
-            foreground=[
-                ("disabled", "red4"),
-                ("pressed", "gray55"),
-                ("active", "chartreuse2"),
-            ],
-            background=[
-                ("disabled", "grey30"),
-                ("pressed", "grey40"),
-                ("active", "gray30"),
-            ],
-            relief=[
-                ("pressed", "flat"),
-                ("!pressed", "flat"),
-            ],
-        )
-        self.style.configure("color1.TLabel", background="gray24", foreground="white", highlightbackground="gray15")
 
         # menu bar
         self.menu = tk.Menu(self)
@@ -109,18 +93,12 @@ class Window(tk.Tk):
         self.bind("<F5>", self.update_game_frame)
         self.bind("<Escape>", self.end)
 
-        # create frames
-        self.main_frame = tk.Frame(self, bg="black")
-
         # initialize tool window
         # configure grid
-        self.object_settings = tk.Canvas(self.main_frame, bg="gray24", highlightthickness=0)
+        self.object_settings = ctk.CTkFrame(self, corner_radius=20)
 
-        for i in range(4):
-            self.object_settings.grid_columnconfigure(i, weight=1, pad=5, uniform="tools")
-
-        for i in range(10):
-            self.object_settings.grid_rowconfigure(i, weight=0, pad=5)
+        self.object_settings.columnconfigure(tuple(range(4)), weight=1, pad=5)
+        self.object_settings.rowconfigure(tuple(range(10)), weight=0, pad=5)
 
         # create dicts
         self.saturation: SliderValue = {}
@@ -129,18 +107,23 @@ class Window(tk.Tk):
         self.brightness: SliderValue = {}
 
         # create objects for tool window
-        self.object_type = ttk.Label(
-            self.object_settings, text="Image Settings", justify="center", style="color1.TLabel",
-            font=("Helvetica", 15), padding=(250, 50)
+        t_f_1 = ctk.CTkFrame(self.object_settings)
+        t_f_1.columnconfigure(0, weight=1)
+        self.object_type = ctk.CTkLabel(
+            t_f_1,
+            text="Image Settings",
+            justify=tk.CENTER,
+            text_font=("Roboto Medium", -16)
         )
+        self.object_type.grid(row=0, column=0, sticky="nsew", padx=15, pady=15)
 
-        lab1 = ttk.Label(self.object_settings, text="", justify="center", style="color1.TLabel")
+        lab1 = ctk.CTkLabel(self.object_settings, text="", justify="center")
 
-        lab1_1 = ttk.Label(self.object_settings, text="Saturation", justify="center", style="color1.TLabel")
-        slider = ttk.Scale(
+        lab1_1 = ctk.CTkLabel(self.object_settings, text="Saturation", justify="center")
+        slider = ctk.CTkSlider(
             self.object_settings, from_=-1, to=3, command=lambda v: self.update_value(self.saturation, v)
         )
-        entry = ttk.Entry(self.object_settings, justify="center", style="color1.TLabel")
+        entry = ctk.CTkEntry(self.object_settings, justify="center")
         self.saturation.update({
             "slider": slider,
             "entry": entry,
@@ -148,12 +131,12 @@ class Window(tk.Tk):
             "enhancer": Color
         })
 
-        lab1_2 = ttk.Label(self.object_settings, text="Sharpness", justify="center", style="color1.TLabel")
-        slider = ttk.Scale(
+        lab1_2 = ctk.CTkLabel(self.object_settings, text="Sharpness", justify="center")
+        slider = ctk.CTkSlider(
             self.object_settings, from_=-1, to=3, command=lambda v: self.update_value(self.sharpness, v)
         )
 
-        entry = ttk.Entry(self.object_settings, justify="center", style="color1.TLabel")
+        entry = ctk.CTkEntry(self.object_settings, justify="center")
         self.sharpness.update({
             "slider": slider,
             "entry": entry,
@@ -161,12 +144,12 @@ class Window(tk.Tk):
             "enhancer": Sharpness
         })
 
-        lab2_1 = ttk.Label(self.object_settings, text="Contrast", justify="center", style="color1.TLabel")
-        slider = ttk.Scale(
+        lab2_1 = ctk.CTkLabel(self.object_settings, text="Contrast", justify="center")
+        slider = ctk.CTkSlider(
             self.object_settings, from_=-1, to=3,
             command=lambda v: self.update_value(self.contrast, v)
         )
-        entry = ttk.Entry(self.object_settings, justify="center", style="color1.TLabel")
+        entry = ctk.CTkEntry(self.object_settings, justify="center")
         self.contrast.update({
             "slider": slider,
             "entry": entry,
@@ -174,12 +157,12 @@ class Window(tk.Tk):
             "enhancer": Contrast
         })
 
-        lab2_2 = ttk.Label(self.object_settings, text="Brightness", justify="center", style="color1.TLabel")
-        slider = ttk.Scale(
+        lab2_2 = ctk.CTkLabel(self.object_settings, text="Brightness", justify="center")
+        slider = ctk.CTkSlider(
             self.object_settings, from_=0, to=3,
             command=lambda v: self.update_value(self.brightness, v)
         )
-        entry = ttk.Entry(self.object_settings, justify="center", style="color1.TLabel")
+        entry = ctk.CTkEntry(self.object_settings, justify="center")
         self.brightness.update({
             "slider": slider,
             "entry": entry,
@@ -187,55 +170,50 @@ class Window(tk.Tk):
             "enhancer": Brightness
         })
 
-        sep3 = ttk.Separator(self.object_settings, orient="horizontal", style="color1.TLabel")
-
-        reset_btn = ttk.Button(
-            self.object_settings, text="Reset Values", style="Wild.TButton", command=self.reset_values
+        reset_btn = ctk.CTkButton(
+            self.object_settings, text="Reset Values", command=self.reset_values
         )
 
         # place on grid
-        self.object_type.grid(row=0, column=0, columnspan=4, sticky=tk.NSEW)
+        t_f_1.grid(row=0, column=0, columnspan=4, sticky="nsew", padx=20, pady=20)
 
         lab1.grid(row=2, column=1, columnspan=2, sticky=tk.NSEW)
 
         lab1_1.grid(row=3, column=0, sticky=tk.NSEW)
         self.saturation["slider"].grid(row=3, column=1, columnspan=2, sticky=tk.NSEW, pady=5)
-        self.saturation["entry"].grid(row=3, column=3, sticky=tk.NSEW)
+        self.saturation["entry"].grid(row=3, column=3, sticky="we", padx=10)
 
         lab1_2.grid(row=4, column=0, sticky=tk.NSEW)
         self.sharpness["slider"].grid(row=4, column=1, columnspan=2, sticky=tk.NSEW, pady=5)
-        self.sharpness["entry"].grid(row=4, column=3, sticky=tk.NSEW)
+        self.sharpness["entry"].grid(row=4, column=3, sticky="we", padx=10)
 
         lab2_1.grid(row=7, column=0, sticky=tk.NSEW)
         self.contrast["slider"].grid(row=7, column=1, columnspan=2, sticky=tk.NSEW, pady=5)
-        self.contrast["entry"].grid(row=7, column=3, sticky=tk.NSEW)
+        self.contrast["entry"].grid(row=7, column=3, sticky="we", padx=10)
 
         lab2_2.grid(row=8, column=0, sticky=tk.NSEW)
         self.brightness["slider"].grid(row=8, column=1, columnspan=2, sticky=tk.NSEW, pady=5)
-        self.brightness["entry"].grid(row=8, column=3, sticky=tk.NSEW)
+        self.brightness["entry"].grid(row=8, column=3, sticky="we", padx=10)
 
-        sep3.grid(row=9, column=0, columnspan=4, sticky=tk.NSEW, pady=10)
-
-        reset_btn.grid(row=10, column=1, columnspan=2, sticky=tk.NSEW)
+        reset_btn.grid(row=10, column=1, columnspan=2, sticky=tk.NSEW, pady=30)
 
         # create canvases
-        self.game_can_center = tk.Canvas(self.main_frame, highlightthickness=0, bg="black")
-        self.game_can = tk.Canvas(self.game_can_center, bg="black", highlightthickness=0)
+        self.game_can_center = ctk.CTkFrame(self, highlightthickness=0)
+        self.game_can = ctk.CTkCanvas(self.game_can_center, highlightthickness=0)
 
         # pack canvases
-        self.object_settings.grid(column=0, row=0, sticky="nsew")
-        self.game_can_center.grid(column=1, row=0, sticky="nsew")
+        self.object_settings.grid(column=0, row=0, sticky="nsew", padx=20, pady=20)
+        self.game_can_center.grid(column=1, row=0, sticky="nsew", padx=10, pady=10)
         self.game_can_center.grid_columnconfigure(0, weight=1)
         self.game_can_center.grid_rowconfigure(0, weight=1)
         self.game_can.grid()
 
         # configure columns
-        self.main_frame.grid_rowconfigure(0, weight=1, pad=0)
-        self.main_frame.grid_columnconfigure(0, weight=0, pad=0)
-        self.main_frame.grid_columnconfigure(1, weight=1, pad=3)
+        self.grid_rowconfigure(0, weight=1, pad=0)
+        self.grid_columnconfigure(0, weight=0, pad=0)
+        self.grid_columnconfigure(1, weight=1, pad=3)
 
         # initial functions
-        self.show_frame(self.main_frame)
         self.update_game_frame()
 
         # draw world map
